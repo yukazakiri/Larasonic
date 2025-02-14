@@ -118,4 +118,9 @@ final class Team extends JetstreamTeam
     {
         return $this->hasMany(Activity::class);
     }
+
+    public function chats(): HasMany
+    {
+        return $this->hasMany(Chat::class);
+    }
 }

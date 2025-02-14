@@ -155,25 +155,13 @@ final class AppServiceProvider extends ServiceProvider
     private function configurePrisms(): void
     {
         // This is example of how to register a Prism.
-        PrismServer::register(
-            'Larasonic Small',
-            fn (): PendingRequest => Prism::text()->using(PrismProvider::Gemini, 'gemini-1.5-flash')
-                ->withSystemPrompt(view('prompts.system')->render())
-                ->withMaxTokens(100)
-        );
+
 
         PrismServer::register(
-            'Larasonic Medium',
-            fn (): PendingRequest => Prism::text()->using(PrismProvider::Gemini, 'gemini-1.5-flash')
+            'Gemini 2.0 Flash',
+            fn (): PendingRequest => Prism::text()->using(PrismProvider::Gemini, 'gemini-2.0-flash')
                 ->withSystemPrompt(view('prompts.system')->render())
-                ->withMaxTokens(150)
-        );
-
-        PrismServer::register(
-            'Larasonic Large',
-            fn (): PendingRequest => Prism::text()->using(PrismProvider::Gemini, 'gemini-1.5-flash')
-                ->withSystemPrompt(view('prompts.system')->render())
-                ->withMaxTokens(250)
+                ->withMaxTokens(200000)
         );
     }
 

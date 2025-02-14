@@ -17,11 +17,11 @@ final class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create admin user with personal team
-        // User::factory()->withPersonalTeam()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        //     'password' => Hash::make('password'),
-        // ]);
+        User::factory()->withPersonalTeam()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => Hash::make('password'),
+        ]);
 
         // Run the TeamMemberSeeder to add 10 users to team ID 1
         $this->call([

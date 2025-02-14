@@ -1,157 +1,251 @@
 <script setup>
-import InputError from '@/Components/InputError.vue'
-import Alert from '@/Components/shadcn/ui/alert/Alert.vue'
-import AlertDescription from '@/Components/shadcn/ui/alert/AlertDescription.vue'
-import AlertTitle from '@/Components/shadcn/ui/alert/AlertTitle.vue'
-import { Button } from '@/Components/shadcn/ui/button'
-
-import { Label } from '@/Components/shadcn/ui/label'
-import Skeleton from '@/Components/shadcn/ui/skeleton/Skeleton.vue'
-import { Textarea } from '@/Components/shadcn/ui/textarea'
-import AppLayout from '@/Layouts/AppLayout.vue'
-import { Icon } from '@iconify/vue'
-import { router, usePage } from '@inertiajs/vue3'
-import { useFetch } from '@vueuse/core'
-import { inject, onMounted, ref } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
-import ModelSelector from './Components/ModelSelector.vue'
-import TemperatureSelector from './Components/TemperatureSelector.vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
+import { Icon } from '@iconify/vue'
+
+// Components
+import AppLayout from '@/Layouts/AppLayout.vue'
+import { Button } from '@/Components/shadcn/ui/button'
+import { Input } from '@/Components/shadcn/ui/input'
+import { Command, CommandInput } from '@/Components/shadcn/ui/command'
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from '@/Components/shadcn/ui/sheet'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from '@/Components/shadcn/ui/dropdown-menu'
+import { ScrollArea } from '@/Components/shadcn/ui/scroll-area'
+import { Badge } from '@/Components/shadcn/ui/badge'
+import ChatShow from './Show.vue'
 
 const props = defineProps({
-  systemPrompt: String,
-  models: Array,
-  subscriptionEnabled: Boolean,
+    chats: Array,
+    currentTeam: Object,
+    models: Array,
+    subscriptionEnabled: Boolean,
+    chat: Object,
+    messages: Array,
 })
 
 const route = inject('route')
+const searchQuery = ref('')
+const isCreatingChat = ref(false)
+const isSheetOpen = ref(true)
 
-const userInput = ref('')
-const modelOutput = ref(null)
-const error = ref(null)
+const filteredChats = computed(() => {
+    if (!searchQuery.value) return props.chats
+    const query = searchQuery.value.toLowerCase()
+    return props.chats.filter(chat =>
+        chat.title?.toLowerCase().includes(query) ||
+        chat.messages?.[chat.messages.length - 1]?.content.toLowerCase().includes(query)
+    )
+})
 
-const selectedModel = ref(props.models[0])
-function onModelSelect(model) {
-  selectedModel.value = model
+const sortedChats = computed(() => {
+    return [...filteredChats.value].sort((a, b) =>
+        new Date(b.updated_at) - new Date(a.updated_at)
+    )
+})
+
+function createNewChat() {
+    isCreatingChat.value = true
+    router.post(route('chat.store'), {}, {
+        onSuccess: () => {
+            isCreatingChat.value = false
+            toast.success('New chat created')
+        },
+        onError: () => {
+            isCreatingChat.value = false
+            toast.error('Failed to create chat')
+        }
+    })
 }
 
-async function submit() {
-  if (!userInput.value.trim()) {
-    error.value = 'Please enter a message'
-    return
-  }
+function deleteChat(chatId) {
+    toast.promise(
+        new Promise((resolve, reject) => {
+            router.delete(route('chat.destroy', chatId), {
+                onSuccess: () => resolve(),
+                onError: () => reject()
+            })
+        }),
+        {
+            loading: 'Deleting chat...',
+            success: 'Chat deleted successfully',
+            error: 'Failed to delete chat'
+        }
+    )
+}
 
-  error.value = null
+function formatDate(date) {
+    const now = new Date()
+    const chatDate = new Date(date)
 
-  const { data, error: fetchError } = await useFetch('/prism/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: selectedModel.value,
-      messages: [
-        { role: 'user', content: userInput.value },
-      ],
-    }),
-  }).json()
+    if (chatDate.toDateString() === now.toDateString()) {
+        return chatDate.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit'
+        })
+    }
 
-  if (fetchError.value) {
-    error.value = 'An error occurred while submitting your message.'
-  }
-  else {
-    modelOutput.value = data.value.choices[0].message.content
-  }
+    return chatDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+    })
 }
 
 onMounted(() => {
-  if (!props.subscriptionEnabled) {
-    const promise = new Promise((resolve, _reject) => {
-      setTimeout(() => {
-        resolve(route('subscriptions.create'))
-      }, 5000)
-    })
-
-    toast.promise(promise, {
-      loading: 'Pro Subscription Required to use this feature.',
-      success: (data) => {
-        router.visit(data)
-      },
-    })
-  }
+    if (!props.subscriptionEnabled) {
+        toast.warning('Pro Subscription Required', {
+            description: 'Upgrade to access all features',
+            action: {
+                label: 'Upgrade',
+                onClick: () => router.visit(route('subscriptions.create'))
+            },
+            duration: 5000
+        })
+    }
 })
-
-const title = `${usePage().props.name} - AI Playground`
 </script>
 
 <template>
-  <AppLayout :title="title">
-    <template #header>
-      <h2 class="text-xl font-semibold leading-tight">
-        {{ $page.props.name }} AI Playground
-      </h2>
-    </template>
-    <div class="h-full flex-col flex">
-      <Alert class="mb-4">
-        <Icon icon="lucide:info" class="size-4" />
-        <AlertTitle>Demo AI Chat</AlertTitle>
-        <AlertDescription>
-          This is a demo AI chat. You can use it to test the AI chat. And This is subscrition protected page
-          so you
-          can't use it without subscription.
-        </AlertDescription>
-      </Alert>
-      <div v-if="props.subscriptionEnabled" class="flex-1">
-        <div class="h-full">
-          <div class="grid h-full items-stretch gap-6 md:grid-cols-[minmax(0,1fr)_180px]">
-            <div class="flex-col space-y-4 flex md:order-2">
-              <ModelSelector :models="props.models" @update:model-select="onModelSelect" />
-              <TemperatureSelector />
-            </div>
-            <div class="order-1">
-              <div class="mt-0 border-0 p-0">
-                <div class="flex flex-col space-y-4">
-                  <div class="grid h-full gap-6 lg:grid-cols-2">
-                    <div class="flex flex-col space-y-4">
-                      <div class="flex flex-1 flex-col space-y-2">
-                        <Label for="input">System Input</Label>
-                        <Textarea
-                          id="input" disabled :default-value="systemPrompt"
-                          class="flex-1 lg:min-h-[320px]"
-                        />
-                      </div>
-                      <div class="flex flex-col space-y-2">
-                        <Label for="instructions">User Input</Label>
-                        <Textarea
-                          id="instructions" v-model="userInput"
-                          class="lg:min-h-[320px]"
-                        />
-                      </div>
+    <AppLayout :title="`${usePage().props.name} - AI Chat`">
+        <div class="flex h-[calc(100vh-4rem)]">
+            <!-- Main Content Area -->
+            <div class="flex-1 flex flex-col">
+                <div class="p-4 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-xl font-semibold leading-tight flex items-center gap-2">
+                            <Icon icon="lucide:message-square" class="size-6" />
+                            {{ currentTeam.name }} - AI Chat
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <Button @click="createNewChat" variant="default" class="gap-2" :disabled="isCreatingChat">
+                                <Icon :icon="isCreatingChat ? 'lucide:loader-2' : 'lucide:plus'" class="size-4"
+                                    :class="{ 'animate-spin': isCreatingChat }" />
+                                {{ isCreatingChat ? 'Creating...' : 'New Chat' }}
+                            </Button>
+                            <Sheet v-model:open="isSheetOpen">
+                                <SheetTrigger asChild>
+                                    <Button variant="outline" size="icon">
+                                        <Icon icon="lucide:sidebar" class="size-4" />
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent class="w-[400px] sm:w-[540px]" side="right">
+                                    <SheetHeader>
+                                        <SheetTitle>Chat History</SheetTitle>
+                                    </SheetHeader>
+                                    <div class="mt-4 space-y-4">
+                                        <Command class="rounded-lg border shadow-md">
+                                            <CommandInput v-model="searchQuery" placeholder="Search conversations..." />
+                                        </Command>
+
+                                        <ScrollArea class="h-[calc(100vh-12rem)]">
+                                            <div class="grid gap-3">
+                                                <div v-for="chat in sortedChats" :key="chat.id" class="group relative">
+                                                    <Link :href="route('chat.show', chat.id)"
+                                                        class="block p-4 rounded-lg border bg-card hover:shadow-lg hover:bg-accent/50 transition-all duration-200">
+                                                    <div class="flex items-center justify-between mb-2">
+                                                        <div class="flex items-center gap-3">
+                                                            <div
+                                                                class="size-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                <Icon icon="lucide:message-square"
+                                                                    class="size-5 text-primary" />
+                                                            </div>
+                                                            <div>
+                                                                <h3 class="font-medium">{{ chat.title || 'New Chat' }}
+                                                                </h3>
+                                                                <p class="text-sm text-muted-foreground">
+                                                                    {{ formatDate(chat.updated_at) }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon"
+                                                                    class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <Icon icon="lucide:more-vertical" class="size-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem @click="deleteChat(chat.id)"
+                                                                    class="text-destructive cursor-pointer">
+                                                                    <Icon icon="lucide:trash-2" class="size-4 mr-2" />
+                                                                    Delete Chat
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+
+                                                    <p
+                                                        class="text-sm text-muted-foreground line-clamp-2 group-hover:text-foreground/90 transition-colors">
+                                                        {{ chat.messages?.[chat.messages?.length - 1]?.content }}
+                                                    </p>
+
+                                                    <div class="flex items-center gap-2 mt-3">
+                                                        <Badge variant="secondary" class="text-xs">
+                                                            {{ chat.messages?.length || 0 }} messages
+                                                        </Badge>
+                                                    </div>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
                     </div>
-                    <div class="flex flex-col space-y-2">
-                      <Label for="output">Model Output</Label>
-                      <Skeleton
-                        v-if="!modelOutput"
-                        class="h-20 sm:h-full min-h-[400px]lg:min-h-[700px] rounded-md"
-                      />
-                      <Textarea
-                        v-else id="output" disabled
-                        class="min-h-[400px] rounded-md bg-muted border lg:min-h-[700px]"
-                        :default-value="modelOutput"
-                      />
-                    </div>
-                  </div>
-                  <div v-if="!modelOutput" class="flex items-center space-x-2">
-                    <Button @click.prevent="submit">
-                      <span>Submit</span>
-                    </Button>
-                    <InputError :message="error" />
-                  </div>
                 </div>
-              </div>
+
+                <!-- Dynamic Content Area -->
+                <div class="flex-1 overflow-hidden">
+                    <ChatShow v-if="chat" :chat="chat" :messages="messages" :models="models"
+                        :subscription-enabled="subscriptionEnabled" />
+                    <div v-else class="h-full flex items-center justify-center">
+                        <div class="text-center space-y-4">
+                            <div class="size-16 rounded-full bg-muted/20 flex items-center justify-center mx-auto">
+                                <Icon icon="lucide:message-square" class="size-8 text-muted-foreground" />
+                            </div>
+                            <h3 class="text-lg font-semibold">Select a Chat</h3>
+                            <p class="text-sm text-muted-foreground">
+                                Choose a conversation from the sidebar or start a new one
+                            </p>
+                            <Button @click="createNewChat" variant="default" class="mt-2">
+                                <Icon icon="lucide:plus" class="size-4 mr-2" />
+                                Start New Chat
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  </AppLayout>
+    </AppLayout>
 </template>
+
+<style scoped>
+.list-move,
+.list-enter-active,
+.list-leave-active {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.list-enter-from,
+.list-leave-to {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.list-leave-active {
+    position: absolute;
+}
+</style>

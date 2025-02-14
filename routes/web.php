@@ -38,6 +38,10 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::delete('/auth/destroy/{provider}', [OauthController::class, 'destroy'])->name('oauth.destroy');
 
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::post('/chat', [ChatController::class, 'store'])->name('chat.store');
+    Route::get('/chat/{chat}', [ChatController::class, 'show'])->name('chat.show');
+    Route::post('/chat/{chat}/messages', [ChatController::class, 'storeMessage'])->name('chat.messages.store');
+    Route::delete('/chat/{chat}', [ChatController::class, 'destroy'])->name('chat.destroy');
 
     Route::resource('/subscriptions', SubscriptionController::class)
         ->names('subscriptions')
