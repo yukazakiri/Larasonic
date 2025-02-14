@@ -9,6 +9,11 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\User\OauthController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\User\LoginLinkController;
+use App\Http\Controllers\ExamController;
+use App\Http\Controllers\UserDashboardController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\TeamMemberPointsController;
 
 Route::get('/', [WelcomeController::class, 'home'])->name('home');
 
@@ -37,4 +42,36 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     Route::resource('/subscriptions', SubscriptionController::class)
         ->names('subscriptions')
         ->only(['index', 'create', 'store', 'show']);
+
+    Route::resource('exams', ExamController::class);
+
+    Route::get('/exams/{exam}/builder', [ExamController::class, 'builder'])
+        ->name('exams.builder');
+
+    Route::get('/exams/{exam}/options', [ExamController::class, 'options'])
+        ->name('exams.options');
+
+    Route::put('/exams/{exam}/publish', [ExamController::class, 'publish'])->name('exams.publish');
+
+    Route::delete('/exams/{exam}', [ExamController::class, 'destroy'])
+        ->name('exams.destroy')
+        ->where('exam', '[0-9]+');
+
+    Route::get('/exams/{exam}/print', [ExamController::class, 'print'])->name('exams.print');
+
+    Route::get('/user-dashboard', UserDashboardController::class)->name('user-dashboard');
+
+    Route::resource('schedules', ScheduleController::class);
+
+    Route::resource('activities', ActivityController::class);
+    Route::post('activities/{activity}/assign-points', [ActivityController::class, 'assignPoints'])
+        ->name('activities.assign-points');
+    Route::post('activities/{activity}/groups', [ActivityController::class, 'manageGroups'])
+        ->name('activities.groups.manage');
+    Route::put('activities/{activity}/members/{member}/points', [ActivityController::class, 'updateMemberPoints'])
+        ->name('activities.members.points');
+
+    Route::get('/teams/{team}/member-points', TeamMemberPointsController::class)
+        ->name('teams.member-points')
+        ->middleware(['auth', 'verified']);
 });

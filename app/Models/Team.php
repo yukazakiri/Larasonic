@@ -47,9 +47,25 @@ final class Team extends JetstreamTeam
     use HasFactory;
 
     /**
+     * The relationships that should always be loaded.
+     *
+     * @var array
+     */
+    protected $with = ['owner'];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'personal_team' => 'boolean',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
@@ -78,14 +94,28 @@ final class Team extends JetstreamTeam
     }
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Get the exams for the team.
      */
-    protected function casts(): array
+    public function exams(): HasMany
     {
-        return [
-            'personal_team' => 'boolean',
-        ];
+        return $this->hasMany(Exam::class);
+    }
+
+    /**
+     * Get all of the team's users including its owner.
+     */
+    public function allUsers(): Collection
+    {
+        return $this->users->merge([$this->owner]);
+    }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(Schedule::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
     }
 }

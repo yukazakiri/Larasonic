@@ -182,4 +182,9 @@ final class User extends Authenticatable implements FilamentUser, MustVerifyEmai
             'password' => 'hashed',
         ];
     }
+
+    public function activityPoints(): HasMany
+    {
+        return $this->hasMany(ActivityUserPoint::class);
+    }
 }

@@ -34,7 +34,7 @@ const stats = [
   <AppLayout title="Dashboard">
     <template #header>
       <h2 class="text-xl font-semibold leading-tight">
-        Dashboard
+        Dashboard 1
       </h2>
     </template>
 

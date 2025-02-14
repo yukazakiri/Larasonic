@@ -9,6 +9,7 @@ use EchoLabs\Prism\Prism;
 use Carbon\CarbonImmutable;
 use Knuckles\Scribe\Scribe;
 use Illuminate\Http\Request;
+use Laravel\Jetstream\Jetstream;
 use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
@@ -59,6 +60,21 @@ final class AppServiceProvider extends ServiceProvider
         $this->configurePrisms();
         $this->configureScribeDocumentation();
         $this->configureRateLimiting();
+
+
+        Jetstream::role('Student', 'Student', [
+            'student:create',
+            'student:read',
+            'student:update',
+            'student:delete',
+        ])->description('Students can answer questions and view their results');
+
+        Jetstream::role('Teacher', 'Teacher', [
+            'teacher:create',
+            'teacher:read',
+            'teacher:update',
+            'teacher:delete',
+        ])->description('Teachers can create and manage students');
     }
 
     /**
